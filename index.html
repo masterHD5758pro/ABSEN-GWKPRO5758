@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Absensi & Cek Riwayat Karyawan</title>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h2, h3 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        select, input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #reader {
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        #result, #historyResult {
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: bold;
+            margin-top: 10px;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            display: block !important;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            display: block !important;
+        }
+        .history-item {
+            background: #e9ecef;
+            padding: 8px;
+            margin-top: 6px;
+            border-radius: 4px;
+            font-size: 13px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Absensi Karyawan</h2>
+        
+        <div class="form-group">
+            <label for="idKaryawan">ID Karyawan:</label>
+            <input type="text" id="idKaryawan" placeholder="Contoh: GK0003" value="GK0003">
+        </div>
+
+        <div class="form-group">
+            <label for="tipeAbsensi">Tipe Absensi:</label>
+            <select id="tipeAbsensi">
+                <option value="Masuk">Masuk</option>
+                <option value="Keluar">Keluar</option>
+            </select>
+        </div>
+
+        <label>Scan QR Code Kantor:</label>
+        <div id="reader"></div>
+
+        <div id="result"></div>
+    </div>
+
+    <!-- Bagian Cek Riwayat Mandiri (Alternatif 3) -->
+    <div class="container">
+        <h3>Cek Riwayat Absen Saya</h3>
+        <div class="form-group">
+            <label for="checkId">Masukkan ID Anda:</label>
+            <input type="text" id="checkId" placeholder="Contoh: GK0003" value="GK0003">
+        </div>
+        <button onclick="cekRiwayat()">Tampilkan Riwayat</button>
+        <div id="historyList" style="margin-top: 15px;"></div>
+    </div>
+
+    <script>
+        // GANTI URL DI BAWAH INI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA
+        const WEB_APP_URL = "MASUKKAN_URL_WEB_APP_ANDA_DI_SINI";
+
+        let isScanning = true;
+
+        function onScanSuccess(decodedText, decodedResult) {
+            if (!isScanning) return;
+            isScanning = false;
+
+            let idKaryawanInput = document.getElementById('idKaryawan').value.trim();
+            let tipeAbsensi = document.getElementById('tipeAbsensi').value;
+            let resultDiv = document.getElementById('result');
+
+            if (!idKaryawanInput) {
+                alert("Harap masukkan ID Karyawan terlebih dahulu!");
+                isScanning = true;
+                return;
+            }
+
+            resultDiv.style.display = "block";
+            resultDiv.className = "";
+            resultDiv.innerText = "Memproses absensi...";
+
+            fetch(WEB_APP_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    idKaryawan: idKaryawanInput,
+                    tokenKantor: decodedText,
+                    tipeAbsensi: tipeAbsensi
+                })
+            })
+            .then(response => {
+                resultDiv.className = "success";
+                resultDiv.innerText = "Berhasil! Absensi " + tipeAbsensi + " untuk ID " + idKaryawanInput + " telah tercatat.";
+                
+                setTimeout(() => {
+                    resultDiv.style.display = "none";
+                    isScanning = true;
+                }, 4000);
+            })
+            .catch(error => {
+                resultDiv.className = "error";
+                resultDiv.innerText = "Gagal mencatat absensi. Coba lagi.";
+                console.error("Error:", error);
+                setTimeout(() => { isScanning = true; }, 3000);
+            });
+        }
+
+        let html5QrcodeScanner = new Html5QrcodeScanner(
+            "reader", { fps: 10, qrbox: 250 }, false);
+        html5QrcodeScanner.render(onScanSuccess);
+
+        // Fungsi untuk mengambil dan menampilkan riwayat absen karyawan
+        function cekRiwayat() {
+            let id = document.getElementById('checkId').value.trim();
+            let historyList = document.getElementById('historyList');
+            
+            if (!id) {
+                alert("Masukkan ID terlebih dahulu untuk mengecek riwayat.");
+                return;
+            }
+
+            historyList.innerHTML = "Memuat riwayat...";
+
+            fetch(WEB_APP_URL + "?id=" + encodeURIComponent(id))
+            .then(res => res.json())
+            .then(data => {
+                if (data.length === 0) {
+                    historyList.innerHTML = "<p style='color: #666; font-size: 14px; text-align: center;'>Belum ada data riwayat untuk ID tersebut.</p>";
+                    return;
+                }
+
+                let html = "<b style='font-size: 14px; color: #333;'>Daftar Absen (" + data.length + "):</b>";
+                // Tampilkan 5 riwayat terbaru
+                data.reverse().slice(0, 5).forEach(item => {
+                    html += `<div class="history-item">📅 ${item.timestamp} <br>📌 <b>${item.tipeAbsensi}</b> - ${item.namaKaryawan} (${item.idKaryawan})</div>`;
+                });
+                historyList.innerHTML = html;
+            })
+            .catch(err => {
+                historyList.innerHTML = "<p style='color: red; font-size: 14px;'>Gagal memuat riwayat.</p>";
+                console.error(err);
+            });
+        }
+    </script>
+
+</body>
+</html>
