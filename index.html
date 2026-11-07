@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal Absensi Karyawan</title>
+    <title>Portal Absensi Aman & Terverifikasi</title>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         body {
@@ -82,7 +82,7 @@
             overflow: hidden;
             margin-bottom: 15px;
         }
-        #result, #loginError {
+        #result, #loginError, #gpsStatus {
             padding: 12px;
             border-radius: 6px;
             text-align: center;
@@ -99,6 +99,12 @@
             background-color: #f8d7da;
             color: #721c24;
             display: block !important;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            display: block !important;
+            font-size: 13px;
         }
         .history-item {
             background: #e9ecef;
@@ -143,6 +149,8 @@
             </select>
         </div>
 
+        <div id="gpsStatus" class="info">Mengecek posisi GPS Anda...</div>
+
         <label>Scan QR Code Kantor:</label>
         <div id="reader"></div>
 
@@ -162,12 +170,30 @@
         // GANTI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxQxEJAJTr45CiuuDbt-8lAhyBRLLbDMWz9e12IotFAOovDz38lHCiItMbzuwr-TBIO/exec";
 
+        // TITIK KORDINAT KANTOR & RADIUS MAKSIMAL (dalam meter)
+        const KANTOR_LAT = -6.9110009;
+        const KANTOR_LNG = 109.6625923;
+        const RADIUS_MAKSIMAL_METER = 50; 
+
         let html5QrcodeScanner;
         let loggedInId = "";
         let loggedInName = "";
+        let userLat = null;
+        let userLng = null;
+
+        // Cek sesi device binding saat halaman dibuka
+        window.onload = function() {
+            let savedId = localStorage.getItem("gwk_logged_id");
+            let savedName = localStorage.getItem("gwk_logged_name");
+            if (savedId) {
+                loggedInId = savedId;
+                loggedInName = savedName;
+                masukKeMenuUtama();
+            }
+        };
 
         function prosesLogin() {
-            let id = document.getElementById('loginId').value.trim();
+            let id = document.getElementById('loginId').value.trim().toUpperCase();
             let pass = document.getElementById('loginPass').value.trim();
             let errorDiv = document.getElementById('loginError');
 
@@ -182,7 +208,6 @@
             errorDiv.style.display = "block";
             errorDiv.innerText = "Memeriksa kredensial...";
 
-            // Kirim data login via POST untuk divalidasi ketat oleh server
             fetch(WEB_APP_URL, {
                 method: "POST",
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -195,19 +220,21 @@
             .then(res => res.json())
             .then(data => {
                 if (data.result === "success") {
-                    loggedInId = id.toUpperCase();
+                    // Cek Device Binding: Apakah HP ini sudah terikat akun lain?
+                    let boundDevice = localStorage.getItem("gwk_device_bound");
+                    if (boundDevice && boundDevice !== id) {
+                        alert("Peringatan: Perangkat HP ini sudah terikat dengan akun ID lain (" + boundDevice + "). Satu HP hanya untuk satu akun!");
+                        return;
+                    }
+
+                    // Simpan sesi ke HP ini secara permanen
+                    localStorage.setItem("gwk_logged_id", id);
+                    localStorage.setItem("gwk_logged_name", data.nama);
+                    localStorage.setItem("gwk_device_bound", id);
+
+                    loggedInId = id;
                     loggedInName = data.nama;
-
-                    // Masuk ke menu utama
-                    document.getElementById('loginSection').classList.add('hidden');
-                    document.getElementById('mainSection').classList.remove('hidden');
-                    document.getElementById('historySection').classList.remove('hidden');
-
-                    document.getElementById('idKaryawanText').innerText = loggedInId;
-                    document.getElementById('namaKaryawanText').innerText = loggedInName;
-
-                    initScanner();
-                    muatRiwayatPribadi(loggedInId);
+                    masukKeMenuUtama();
                 } else {
                     errorDiv.className = "error";
                     errorDiv.innerText = data.message || "ID atau Password salah!";
@@ -216,8 +243,67 @@
             .catch(err => {
                 errorDiv.className = "error";
                 errorDiv.innerText = "Gagal terhubung ke server.";
-                console.error(err);
             });
+        }
+
+        function masukKeMenuUtama() {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('mainSection').classList.remove('hidden');
+            document.getElementById('historySection').classList.remove('hidden');
+
+            document.getElementById('idKaryawanText').innerText = loggedInId;
+            document.getElementById('namaKaryawanText').innerText = loggedInName;
+
+            cekLokasiGPS();
+            muatRiwayatPribadi(loggedInId);
+        }
+
+        // Fungsionalitas Validasi GPS
+        function cekLokasiGPS() {
+            let gpsDiv = document.getElementById('gpsStatus');
+            if (!navigator.geolocation) {
+                gpsDiv.className = "error";
+                gpsDiv.innerText = "Browser Anda tidak mendukung fitur GPS.";
+                return;
+            }
+
+            gpsDiv.className = "info";
+            gpsDiv.innerText = "Mendeteksi posisi GPS Anda...";
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    userLat = position.coords.latitude;
+                    userLng = position.coords.longitude;
+
+                    let jarak = hitungJarakMeter(userLat, userLng, KANTOR_LAT, KANTOR_LNG);
+                    
+                    if (jarak <= RADIUS_MAKSIMAL_METER) {
+                        gpsDiv.className = "success";
+                        gpsDiv.innerText = "GPS Valid: Anda berada di area kantor (Jarak: " + Math.round(jarak) + "m). Silakan scan QR.";
+                        initScanner();
+                    } else {
+                        gpsDiv.className = "error";
+                        gpsDiv.innerText = "Akses Ditolak: Anda berada di luar radius kantor! (Jarak: " + Math.round(jarak) + "m dari kantor).";
+                    }
+                },
+                (error) => {
+                    gpsDiv.className = "error";
+                    gpsDiv.innerText = "Gagal membaca GPS. Harap aktifkan izin lokasi di HP Anda.";
+                },
+                { enableHighAccuracy: true }
+            );
+        }
+
+        // Rumus Haversine untuk hitung jarak meter antar koordinat GPS
+        function hitungJarakMeter(lat1, lon1, lat2, lon2) {
+            let R = 6371e3; // Radius bumi dalam meter
+            let dLat = (lat2 - lat1) * Math.PI / 180;
+            let dLon = (lon2 - lon1) * Math.PI / 180;
+            let a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
         }
 
         function onScanSuccess(decodedText, decodedResult) {
@@ -267,7 +353,7 @@
         function mulaiScanUlang() {
             document.getElementById('result').style.display = "none";
             document.getElementById('btnResetScan').style.display = "none";
-            initScanner();
+            cekLokasiGPS(); // Periksa ulang GPS saat scan ulang
         }
 
         function muatRiwayatPribadi(id) {
@@ -297,6 +383,10 @@
             if (html5QrcodeScanner) {
                 html5QrcodeScanner.clear().catch(e => {});
             }
+            // Hapus sesi login lokal HP ini
+            localStorage.removeItem("gwk_logged_id");
+            localStorage.removeItem("gwk_logged_name");
+
             document.getElementById('mainSection').classList.add('hidden');
             document.getElementById('historySection').classList.add('hidden');
             document.getElementById('loginSection').classList.remove('hidden');
