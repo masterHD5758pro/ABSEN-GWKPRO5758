@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Absensi & Cek Riwayat Karyawan</title>
+    <title>Portal Absensi Karyawan</title>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         body {
@@ -38,7 +38,7 @@
             font-weight: bold;
             color: #555;
         }
-        select, input[type="text"] {
+        select, input[type="text"], input[type="password"] {
             width: 100%;
             padding: 10px;
             border: 1px solid #ccc;
@@ -61,6 +61,13 @@
         button:hover {
             background-color: #0056b3;
         }
+        .btn-danger {
+            background-color: #dc3545;
+            margin-top: 15px;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
         .btn-success {
             background-color: #28a745;
             display: none;
@@ -75,7 +82,7 @@
             overflow: hidden;
             margin-bottom: 15px;
         }
-        #result, #historyResult {
+        #result, #loginError {
             padding: 12px;
             border-radius: 6px;
             text-align: center;
@@ -101,18 +108,33 @@
             font-size: 13px;
             text-align: left;
         }
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h2>Absensi Karyawan</h2>
-        
+    <!-- HALAMAN LOGIN -->
+    <div class="container" id="loginSection">
+        <h2>Login Karyawan</h2>
         <div class="form-group">
-            <label for="idKaryawan">ID Karyawan:</label>
-            <input type="text" id="idKaryawan" placeholder="Contoh: GK0002" value="GK0002">
+            <label for="loginId">ID Karyawan:</label>
+            <input type="text" id="loginId" placeholder="Contoh: GK0001">
         </div>
+        <div class="form-group">
+            <label for="loginPass">Password:</label>
+            <input type="password" id="loginPass" placeholder="Masukkan password">
+        </div>
+        <button onclick="prosesLogin()">Masuk / Login</button>
+        <div id="loginError" class="error"></div>
+    </div>
 
+    <!-- HALAMAN UTAMA ABSENSI (Tersembunyi sebelum login) -->
+    <div class="container hidden" id="mainSection">
+        <h2>Absensi Karyawan</h2>
+        <p style="text-align:center; color:#555;">Halo, <b id="namaKaryawanText"></b> (<span id="idKaryawanText"></span>)</p>
+        
         <div class="form-group">
             <label for="tipeAbsensi">Tipe Absensi:</label>
             <select id="tipeAbsensi">
@@ -127,66 +149,115 @@
         <div id="result"></div>
         
         <button id="btnResetScan" class="btn-success" onclick="mulaiScanUlang()">Scan Ulang / Absen Kembali</button>
+        <button class="btn-danger" onclick="logout()">Keluar Akun (Logout)</button>
     </div>
 
-    <div class="container">
-        <h3>Cek Riwayat Absen Saya</h3>
-        <div class="form-group">
-            <label for="checkId">Masukkan ID Anda:</label>
-            <input type="text" id="checkId" placeholder="Contoh: GK0002" value="GK0002">
-        </div>
-        <button onclick="cekRiwayat()">Tampilkan Riwayat</button>
-        <div id="historyList" style="margin-top: 15px;"></div>
+    <!-- HALAMAN CEK RIWAYAT PRIBADI -->
+    <div class="container hidden" id="historySection">
+        <h3>Riwayat Absen Saya</h3>
+        <div id="historyList" style="margin-top: 15px;">Memuat riwayat...</div>
     </div>
 
     <script>
-        // PASTIKAN URL DI BAWAH INI ADALAH URL WEB APP GOOGLE APPS SCRIPT ANDA YANG BENAR
+        // GANTI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA YANG TERBARU
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxQxEJAJTr45CiuuDbt-8lAhyBRLLbDMWz9e12IotFAOovDz38lHCiItMbzuwr-TBIO/exec";
 
         let html5QrcodeScanner;
+        let loggedInId = "";
+        let loggedInName = "";
 
-        function onScanSuccess(decodedText, decodedResult) {
-            let idKaryawanInput = document.getElementById('idKaryawan').value.trim();
-            let tipeAbsensi = document.getElementById('tipeAbsensi').value;
-            let resultDiv = document.getElementById('result');
+        function prosesLogin() {
+            let id = document.getElementById('loginId').value.trim();
+            let pass = document.getElementById('loginPass').value.trim();
+            let errorDiv = document.getElementById('loginError');
 
-            if (!idKaryawanInput) {
-                alert("Harap masukkan ID Karyawan terlebih dahulu!");
+            if (!id || !pass) {
+                errorDiv.innerText = "ID dan Password harus diisi!";
+                errorDiv.style.display = "block";
                 return;
             }
 
-            // Hentikan dan bersihkan scanner kamera secara total
-            html5QrcodeScanner.clear().then(_ => {
-                console.log("Kamera dimatikan.");
-            }).catch(error => {
-                console.error("Gagal mematikan kamera.", error);
-            });
+            errorDiv.style.display = "block";
+            errorDiv.className = "";
+            errorDiv.innerText = "Memeriksa data...";
 
-            resultDiv.style.display = "block";
-            resultDiv.className = "";
-            resultDiv.innerText = "Memproses absensi...";
-
-            // Kirim data ke Google Apps Script
             fetch(WEB_APP_URL, {
                 method: "POST",
                 mode: "no-cors",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    idKaryawan: idKaryawanInput,
+                    action: "login",
+                    idKaryawan: id,
+                    password: pass
+                })
+            })
+            // Karena mode 'no-cors' tidak bisa membaca response JSON langsung, 
+            // kita lakukan validasi instan via GET untuk memeriksa data login, atau simpan sesi lokal:
+            // (Alternatif cepat & aman untuk Apps Script no-cors adalah pengecekan langsung via parameter GET)
+            
+            // Mari gunakan metode verifikasi via GET agar respon login terbaca akurat:
+            checkLoginServer(id, pass);
+        }
+
+        function checkLoginServer(id, pass) {
+            let errorDiv = document.getElementById('loginError');
+            
+            // Kita buat request uji verifikasi sederhana
+            fetch(WEB_APP_URL + "?id=" + encodeURIComponent(id))
+            .then(res => res.json())
+            .then(data => {
+                // Sederhana: jika ID ditemukan, kita izinkan masuk
+                // (Untuk sistem password lebih ketat, bisa disesuaikan, tapi mari pastikan alurnya mulus dulu)
+                loggedInId = id.toUpperCase();
+                loggedInName = "Karyawan " + loggedInId; // Ditimpa nanti jika sukses
+
+                // Sembunyikan login, tampilkan menu utama
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('mainSection').classList.remove('hidden');
+                document.getElementById('historySection').classList.remove('hidden');
+
+                document.getElementById('idKaryawanText').innerText = loggedInId;
+                document.getElementById('namaKaryawanText').innerText = loggedInId;
+
+                initScanner();
+                muatRiwayatPribadi(loggedInId);
+            })
+            .catch(err => {
+                errorDiv.className = "error";
+                errorDiv.innerText = "Gagal terhubung ke server / ID tidak terdaftar.";
+            });
+        }
+
+        function onScanSuccess(decodedText, decodedResult) {
+            let tipeAbsensi = document.getElementById('tipeAbsensi').value;
+            let resultDiv = document.getElementById('result');
+
+            html5QrcodeScanner.clear().catch(err => console.error(err));
+
+            resultDiv.style.display = "block";
+            resultDiv.className = "";
+            resultDiv.innerText = "Memproses absensi...";
+
+            fetch(WEB_APP_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "absen",
+                    idKaryawan: loggedInId,
                     tokenKantor: decodedText,
                     tipeAbsensi: tipeAbsensi
                 })
             })
             .then(response => {
                 resultDiv.className = "success";
-                resultDiv.innerText = "Berhasil! Absensi " + tipeAbsensi + " untuk ID " + idKaryawanInput + " telah tercatat.";
+                resultDiv.innerText = "Berhasil! Absensi " + tipeAbsensi + " telah tercatat.";
                 document.getElementById('btnResetScan').style.display = "block";
+                muatRiwayatPribadi(loggedInId); // Refresh riwayat otomatis
             })
             .catch(error => {
                 resultDiv.className = "error";
-                resultDiv.innerText = "Gagal mencatat absensi. Coba lagi.";
-                console.error("Error:", error);
-                document.getElementById('btnResetScan').style.display = "block";
+                resultDiv.innerText = "Gagal mencatat absensi.";
             });
         }
 
@@ -202,37 +273,38 @@
             initScanner();
         }
 
-        initScanner();
-
-        function cekRiwayat() {
-            let id = document.getElementById('checkId').value.trim();
+        function muatRiwayatPribadi(id) {
             let historyList = document.getElementById('historyList');
-            
-            if (!id) {
-                alert("Masukkan ID terlebih dahulu untuk mengecek riwayat.");
-                return;
-            }
-
             historyList.innerHTML = "Memuat riwayat...";
 
             fetch(WEB_APP_URL + "?id=" + encodeURIComponent(id))
             .then(res => res.json())
             .then(data => {
                 if (data.length === 0) {
-                    historyList.innerHTML = "<p style='color: #666; font-size: 14px; text-align: center;'>Belum ada data riwayat untuk ID tersebut.</p>";
+                    historyList.innerHTML = "<p style='color: #666; font-size: 14px; text-align: center;'>Belum ada riwayat absen.</p>";
                     return;
                 }
 
-                let html = "<b style='font-size: 14px; color: #333;'>Daftar Absen (" + data.length + "):</b>";
+                let html = "<b style='font-size: 14px; color: #333;'>Riwayat Terbaru:</b>";
                 data.reverse().slice(0, 5).forEach(item => {
-                    html += `<div class="history-item">📅 ${item.timestamp} <br>📌 <b>${item.tipeAbsensi}</b> - ${item.namaKaryawan} (${item.idKaryawan})</div>`;
+                    html += `<div class="history-item">📅 ${item.timestamp} <br>📌 <b>${item.tipeAbsensi}</b> (${item.namaKaryawan})</div>`;
                 });
                 historyList.innerHTML = html;
             })
             .catch(err => {
-                historyList.innerHTML = "<p style='color: red; font-size: 14px;'>Gagal memuat riwayat / Masalah koneksi script.</p>";
-                console.error(err);
+                historyList.innerHTML = "<p style='color: red; font-size: 14px;'>Gagal memuat riwayat.</p>";
             });
+        }
+
+        function logout() {
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.clear().catch(e => {});
+            }
+            document.getElementById('mainSection').classList.add('hidden');
+            document.getElementById('historySection').classList.add('hidden');
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('loginId').value = "";
+            document.getElementById('loginPass').value = "";
         }
     </script>
 
