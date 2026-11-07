@@ -59,7 +59,7 @@
         function generateDynamicQR() {
             // Membuat token unik berdasarkan jam dan menit berjalan agar berganti otomatis
             let now = new Date();
-            let tokenUnik = "KANTOR-GWK-" + now.getFullYear() + "-" + (now.getMonth()+1) + "-" + now.getDate() + "-" + now.getHours() + "-" + Math.floor(now.getMinutes() / 2);
+            let tokenUnik = "KANTOR-GWK-" + now.getFullYear() + "-" + (now.getMonth()+1) + "-" + now.getDate() + "-" + now.getHours() + "-" + Math.floor(now.getMinutes() / 1);
             
             qrcode.makeCode(tokenUnik);
             
