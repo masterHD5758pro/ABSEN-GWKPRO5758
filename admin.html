@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel QR Code Absensi Kantor</title>
+    <!-- Library QR Code Generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1e1e2f;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .card {
+            background: white;
+            color: #333;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        #qrcode {
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+        .timer {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>QR Code Absensi Kantor</h2>
+        <p>Silakan scan menggunakan HP Anda</p>
+        
+        <div id="qrcode"></div>
+        
+        <div class="timer" id="timerText">Memperbarui QR Code dalam 60 detik...</div>
+    </div>
+
+    <script>
+        let qrcodeContainer = document.getElementById("qrcode");
+        let qrcode = new QRCode(qrcodeContainer, {
+            width: 250,
+            height: 250
+        });
+
+        function generateDynamicQR() {
+            // Membuat token unik berdasarkan jam dan menit berjalan agar berganti otomatis
+            let now = new Date();
+            let tokenUnik = "KANTOR-GWK-" + now.getFullYear() + "-" + (now.getMonth()+1) + "-" + now.getDate() + "-" + now.getHours() + "-" + Math.floor(now.getMinutes() / 2);
+            
+            qrcode.makeCode(tokenUnik);
+            
+            let detik = 60;
+            let timerInterval = setInterval(() => {
+                detik--;
+                document.getElementById("timerText").innerText = "QR Code akan diperbarui dalam " + detik + " detik...";
+                if (detik <= 0) {
+                    clearInterval(timerInterval);
+                    generateDynamicQR(); // Refresh QR otomatis
+                }
+            }, 1000);
+        }
+
+        // Jalankan saat pertama buka
+        generateDynamicQR();
+    </script>
+
+</body>
+</html>
