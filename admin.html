@@ -46,7 +46,7 @@
         
         <div id="qrcode"></div>
         
-        <div class="timer" id="timerText">Memperbarui QR Code dalam 30 detik...</div>
+        <div class="timer" id="timerText">Memperbarui QR Code dalam 60 detik...</div>
     </div>
 
     <script>
@@ -63,7 +63,7 @@
             
             qrcode.makeCode(tokenUnik);
             
-            let detik = 30;
+            let detik = 60;
             let timerInterval = setInterval(() => {
                 detik--;
                 document.getElementById("timerText").innerText = "QR Code akan diperbarui dalam " + detik + " detik...";
