@@ -74,6 +74,7 @@
             border-radius: 8px;
             overflow: hidden;
             margin-bottom: 15px;
+            background: #000;
         }
         #result, #historyResult {
             padding: 12px;
@@ -121,17 +122,14 @@
             </select>
         </div>
 
-        <label id="labelScanner">Scan QR Code Kantor:</label>
-        <!-- Area Kamera Pemindai QR -->
-        <div id="reader"></div>
+        <label>Scan QR Code Kantor:</label>
+        <div id="reader" style="width: 100%;"></div>
 
         <div id="result"></div>
         
-        <!-- Tombol untuk menyalakan ulang kamera jika ingin absen lagi -->
         <button id="btnResetScan" class="btn-success" onclick="mulaiScanUlang()">Scan Ulang / Absen Kembali</button>
     </div>
 
-    <!-- Bagian Cek Riwayat Mandiri -->
     <div class="container">
         <h3>Cek Riwayat Absen Saya</h3>
         <div class="form-group">
@@ -146,45 +144,68 @@
         // GANTI URL DI BAWAH INI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbybV2L4NlXf2JmGvS9Uo8w7z1Xq3v4N_.../exec";
 
-        let html5QrcodeScanner;
+        let html5QrCode;
+        let isScanningActive = false;
 
-        function onScanSuccess(decodedText, decodedResult) {
+        function startScanner() {
+            html5QrCode = new Html5Qrcode("reader");
+            
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText, decodedResult) => {
+                    // Jika sukses scan, langsung hentikan proses scan dan matikan kamera
+                    if (isScanningActive) {
+                        isScanningActive = false;
+                        
+                        html5QrCode.stop().then(() => {
+                            html5QrCode.clear();
+                            processAbsensi(decodedText);
+                        }).catch(err => {
+                            console.error("Gagal menghentikan kamera", err);
+                            processAbsensi(decodedText);
+                        });
+                    }
+                },
+                (errorMessage) => {
+                    // Error scan per frame diabaikan agar tidak memenuhi console
+                }
+            ).then(() => {
+                isScanningActive = true;
+            }).catch(err => {
+                alert("Gagal membuka kamera. Pastikan izin kamera di browser Anda diaktifkan.");
+                console.error(err);
+            });
+        }
+
+        function processAbsensi(tokenData) {
             let idKaryawanInput = document.getElementById('idKaryawan').value.trim();
             let tipeAbsensi = document.getElementById('tipeAbsensi').value;
             let resultDiv = document.getElementById('result');
 
             if (!idKaryawanInput) {
                 alert("Harap masukkan ID Karyawan terlebih dahulu!");
+                mulaiScanUlang();
                 return;
             }
-
-            // 1. LANGSUNG MATIKAN KAMERA SETELAH QR CODE KETANGKAP
-            html5QrcodeScanner.clear().then(_ => {
-                console.log("Kamera dimatikan.");
-            }).catch(error => {
-                console.error("Gagal mematikan kamera.", error);
-            });
 
             resultDiv.style.display = "block";
             resultDiv.className = "";
             resultDiv.innerText = "Memproses absensi...";
 
-            // 2. Kirim data ke Google Apps Script
             fetch(WEB_APP_URL, {
                 method: "POST",
                 mode: "no-cors",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     idKaryawan: idKaryawanInput,
-                    tokenKantor: decodedText,
+                    tokenKantor: tokenData,
                     tipeAbsensi: tipeAbsensi
                 })
             })
             .then(response => {
                 resultDiv.className = "success";
                 resultDiv.innerText = "Berhasil! Absensi " + tipeAbsensi + " untuk ID " + idKaryawanInput + " telah tercatat.";
-                
-                // Tampilkan tombol untuk scan ulang
                 document.getElementById('btnResetScan').style.display = "block";
             })
             .catch(error => {
@@ -195,24 +216,17 @@
             });
         }
 
-        // Inisialisasi awal pemindai kamera
-        function initScanner() {
-            html5QrcodeScanner = new Html5QrcodeScanner(
-                "reader", { fps: 10, qrbox: 250 }, false);
-            html5QrcodeScanner.render(onScanSuccess);
-        }
-
-        // Fungsi untuk menyalakan kembali kamera jika karyawan ingin scan lagi
         function mulaiScanUlang() {
             document.getElementById('result').style.display = "none";
             document.getElementById('btnResetScan').style.display = "none";
-            initScanner();
+            startScanner();
         }
 
-        // Jalankan scanner saat halaman pertama kali dibuka
-        initScanner();
+        // Jalankan scanner pertama kali saat halaman dimuat
+        window.onload = function() {
+            startScanner();
+        };
 
-        // Fungsi untuk mengecek riwayat mandiri
         function cekRiwayat() {
             let id = document.getElementById('checkId').value.trim();
             let historyList = document.getElementById('historyList');
