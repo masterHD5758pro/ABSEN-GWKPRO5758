@@ -46,6 +46,24 @@
             font-size: 16px;
             box-sizing: border-box;
         }
+        /* Style untuk pembungkus input password & ikon mata */
+        .password-container {
+            position: relative;
+            width: 100%;
+        }
+        .password-container input {
+            width: 100%;
+            padding-right: 40px; /* Beri ruang untuk ikon mata */
+        }
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            font-size: 18px;
+            user-select: none;
+        }
         button {
             width: 100%;
             background-color: #007bff;
@@ -130,7 +148,10 @@
         </div>
         <div class="form-group">
             <label for="loginPass">Password:</label>
-            <input type="password" id="loginPass" placeholder="Masukkan password">
+            <div class="password-container">
+                <input type="password" id="loginPass" placeholder="Masukkan password">
+                <span class="toggle-password" onclick="togglePasswordVisibility()">👁️‍🗨️</span>
+            </div>
         </div>
         <button onclick="prosesLogin()">Masuk / Login</button>
         <div id="loginError"></div>
@@ -168,12 +189,12 @@
 
     <script>
         // GANTI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxQxEJAJTr45CiuuDbt-8lAhyBRLLbDMWz9e12IotFAOovDz38lHCiItMbzuwr-TBIO/exec";
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbybV2L4NlXf2JmGvS9Uo8w7z1Xq3v4N_.../exec";
 
         // TITIK KORDINAT KANTOR & RADIUS MAKSIMAL (dalam meter)
         const KANTOR_LAT = -6.9110009;
         const KANTOR_LNG = 109.6625923;
-        const RADIUS_MAKSIMAL_METER = 50; 
+        const RADIUS_MAKSIMAL_METER = 100; 
 
         let html5QrcodeScanner;
         let loggedInId = "";
@@ -181,7 +202,19 @@
         let userLat = null;
         let userLng = null;
 
-        // Cek sesi device binding saat halaman dibuka
+        // Fungsi untuk menampilkan / menyembunyikan password
+        function togglePasswordVisibility() {
+            let passInput = document.getElementById('loginPass');
+            let toggleIcon = document.querySelector('.toggle-password');
+            if (passInput.type === "password") {
+                passInput.type = "text";
+                toggleIcon.innerText = "👁️"; // Ubah ikon saat terbuka
+            } else {
+                passInput.type = "password";
+                toggleIcon.innerText = "👁️‍🗨️"; // Kembali ke ikon tertutup
+            }
+        }
+
         window.onload = function() {
             let savedId = localStorage.getItem("gwk_logged_id");
             let savedName = localStorage.getItem("gwk_logged_name");
@@ -220,14 +253,12 @@
             .then(res => res.json())
             .then(data => {
                 if (data.result === "success") {
-                    // Cek Device Binding: Apakah HP ini sudah terikat akun lain?
                     let boundDevice = localStorage.getItem("gwk_device_bound");
                     if (boundDevice && boundDevice !== id) {
                         alert("Peringatan: Perangkat HP ini sudah terikat dengan akun ID lain (" + boundDevice + "). Satu HP hanya untuk satu akun!");
                         return;
                     }
 
-                    // Simpan sesi ke HP ini secara permanen
                     localStorage.setItem("gwk_logged_id", id);
                     localStorage.setItem("gwk_logged_name", data.nama);
                     localStorage.setItem("gwk_device_bound", id);
@@ -258,7 +289,6 @@
             muatRiwayatPribadi(loggedInId);
         }
 
-        // Fungsionalitas Validasi GPS
         function cekLokasiGPS() {
             let gpsDiv = document.getElementById('gpsStatus');
             if (!navigator.geolocation) {
@@ -294,9 +324,8 @@
             );
         }
 
-        // Rumus Haversine untuk hitung jarak meter antar koordinat GPS
         function hitungJarakMeter(lat1, lon1, lat2, lon2) {
-            let R = 6371e3; // Radius bumi dalam meter
+            let R = 6371e3;
             let dLat = (lat2 - lat1) * Math.PI / 180;
             let dLon = (lon2 - lon1) * Math.PI / 180;
             let a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -353,7 +382,7 @@
         function mulaiScanUlang() {
             document.getElementById('result').style.display = "none";
             document.getElementById('btnResetScan').style.display = "none";
-            cekLokasiGPS(); // Periksa ulang GPS saat scan ulang
+            cekLokasiGPS();
         }
 
         function muatRiwayatPribadi(id) {
@@ -383,7 +412,6 @@
             if (html5QrcodeScanner) {
                 html5QrcodeScanner.clear().catch(e => {});
             }
-            // Hapus sesi login lokal HP ini
             localStorage.removeItem("gwk_logged_id");
             localStorage.removeItem("gwk_logged_name");
 
