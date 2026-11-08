@@ -31,6 +31,7 @@
         }
         .form-group {
             margin-bottom: 15px;
+            position: relative;
         }
         label {
             display: block;
@@ -53,7 +54,7 @@
         }
         .password-container input {
             width: 100%;
-            padding-right: 40px; /* Beri ruang untuk ikon mata */
+            padding-right: 40px;
         }
         .toggle-password {
             position: absolute;
@@ -63,6 +64,31 @@
             cursor: pointer;
             font-size: 18px;
             user-select: none;
+        }
+        /* Style untuk Dropdown Riwayat ID Custom */
+        #customDropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 100;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .dropdown-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            font-size: 15px;
+            color: #333;
+        }
+        .dropdown-item:hover {
+            background-color: #f1f1f1;
         }
         button {
             width: 100%;
@@ -140,25 +166,24 @@
 <body>
 
     <!-- HALAMAN LOGIN -->
-<div class="container" id="loginSection">
-    <h2>Login Karyawan GWKPRO5758</h2>
-<div class="form-group">
-    <label for="loginId">ID Karyawan:</label>
-    <!-- Tambahkan atribut list="listIdKaryawan" -->
-    <input type="text" id="loginId" placeholder="Contoh: SAMSU234" list="listIdKaryawan" autocomplete="username">
-    <!-- Datalist ini akan diisi secara otomatis oleh JavaScript -->
-    <datalist id="listIdKaryawan"></datalist>
-</div>
-<div class="form-group">
-        <label for="loginPass">Password:</label>
-        <div class="password-container">
-            <input type="password" id="loginPass" placeholder="Masukkan password" autocomplete="current-password">
-            <span class="toggle-password" onclick="togglePasswordVisibility()">🫪</span>
+    <div class="container" id="loginSection">
+        <h2>Login Karyawan GWKPRO5758</h2>
+        <div class="form-group">
+            <label for="loginId">ID Karyawan:</label>
+            <input type="text" id="loginId" placeholder="Contoh: SAMSU234" autocomplete="off" onclick="tampilkanOpsiId()" onfocus="tampilkanOpsiId()">
+            <!-- Kotak Dropdown Riwayat ID -->
+            <div id="customDropdown"></div>
         </div>
+        <div class="form-group">
+            <label for="loginPass">Password:</label>
+            <div class="password-container">
+                <input type="password" id="loginPass" placeholder="Masukkan password" autocomplete="current-password">
+                <span class="toggle-password" onclick="togglePasswordVisibility()">😴</span>
+            </div>
+        </div>
+        <button onclick="prosesLogin()">Masuk / Login</button>
+        <div id="loginError"></div>
     </div>
-    <button onclick="prosesLogin()">Masuk / Login</button>
-    <div id="loginError"></div>
-</div>
 
     <!-- HALAMAN UTAMA ABSENSI -->
     <div class="container hidden" id="mainSection">
@@ -211,27 +236,71 @@
             let toggleIcon = document.querySelector('.toggle-password');
             if (passInput.type === "password") {
                 passInput.type = "text";
-                toggleIcon.innerText = "🫪"; // Ubah ikon saat terbuka
+                toggleIcon.innerText = "🫪"; 
             } else {
                 passInput.type = "password";
-                toggleIcon.innerText = "😴"; // Kembali ke ikon tertutup
+                toggleIcon.innerText = "😴"; 
             }
         }
 
-window.onload = function() {
-    // 1. Muat riwayat ID ke datalist saat halaman dibuka
-    muatDatalistLogin();
+        // Cek sesi login saat halaman pertama kali dimuat
+        window.onload = function() {
+            let savedId = localStorage.getItem("gwk_logged_id");
+            let savedName = localStorage.getItem("gwk_logged_name");
+            
+            if (savedId) {
+                loggedInId = savedId;
+                loggedInName = savedName;
+                masukKeMenuUtama();
+            }
+        };
 
-    // 2. Cek apakah perangkat sudah pernah login sebelumnya
-    let savedId = localStorage.getItem("gwk_logged_id");
-    let savedName = localStorage.getItem("gwk_logged_name");
-    
-    if (savedId) {
-        loggedInId = savedId;
-        loggedInName = savedName;
-        masukKeMenuUtama();
-    }
-};
+        // Fungsi untuk memunculkan riwayat ID saat kolom diklik
+        function tampilkanOpsiId() {
+            let dropdown = document.getElementById('customDropdown');
+            let riwayatId = JSON.parse(localStorage.getItem('gwk_saved_ids') || '[]');
+            
+            if (riwayatId.length === 0) {
+                dropdown.style.display = "none";
+                return;
+            }
+            
+            let html = "";
+            riwayatId.forEach(id => {
+                html += `<div class="dropdown-item" onclick="pilihIdDihalaman('${id}')">👤 ${id}</div>`;
+            });
+            
+            dropdown.innerHTML = html;
+            dropdown.style.display = "block";
+        }
+
+        function pilihIdDihalaman(idTerpilih) {
+            document.getElementById('loginId').value = idTerpilih;
+            document.getElementById('customDropdown').style.display = "none";
+        }
+
+        // Sembunyikan dropdown jika mengklik di luar area input
+        document.addEventListener('click', function(event) {
+            let inputId = document.getElementById('loginId');
+            let dropdown = document.getElementById('customDropdown');
+            if (inputId && dropdown && !inputId.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.style.display = "none";
+            }
+        });
+
+        // Fungsi untuk merekam ID baru ke localStorage perangkat
+        function simpanIdKeRiwayat(idBaru) {
+            if (!idBaru) return;
+            let riwayatId = JSON.parse(localStorage.getItem('gwk_saved_ids') || '[]');
+            
+            if (!riwayatId.includes(idBaru)) {
+                riwayatId.unshift(idBaru);
+                if (riwayatId.length > 5) {
+                    riwayatId.pop();
+                }
+                localStorage.setItem('gwk_saved_ids', JSON.stringify(riwayatId));
+            }
+        }
 
         function prosesLogin() {
             let id = document.getElementById('loginId').value.trim().toUpperCase();
@@ -271,8 +340,8 @@ window.onload = function() {
                     localStorage.setItem("gwk_logged_name", data.nama);
                     localStorage.setItem("gwk_device_bound", id);
                     
-                    // REKAM ID KE DATALIST DI SINI:
-                    simpanIdKeDatalist(id);
+                    // Simpan ke riwayat ID perangkat
+                    simpanIdKeRiwayat(id);
 
                     loggedInId = id;
                     loggedInName = data.nama;
@@ -287,40 +356,7 @@ window.onload = function() {
                 errorDiv.innerText = "Gagal terhubung ke server.";
             });
         }
-// Fungsi untuk memuat riwayat ID ke datalist di perangkat ini
-function muatDatalistLogin() {
-    let datalist = document.getElementById('listIdKaryawan');
-    if (!datalist) return;
-    
-    // Ambil data riwayat ID dari localStorage (disimpan dalam bentuk array JSON)
-    let riwayatId = JSON.parse(localStorage.getItem('gwk_saved_ids') || '[]');
-    
-    // Bersihkan isi datalist sebelumnya
-    datalist.innerHTML = '';
-    
-    // Masukkan setiap ID yang pernah tersimpan ke dalam option datalist
-    riwayatId.forEach(id => {
-        let option = document.createElement('option');
-        option.value = id;
-        datalist.appendChild(option);
-    });
-}
 
-// Fungsi untuk merekam ID baru yang berhasil login
-function simpanIdKeDatalist(idBaru) {
-    if (!idBaru) return;
-    let riwayatId = JSON.parse(localStorage.getItem('gwk_saved_ids') || '[]');
-    
-    // Jika ID belum ada di dalam riwayat, tambahkan ke urutan paling depan
-    if (!riwayatId.includes(idBaru)) {
-        riwayatId.unshift(idBaru);
-        // Batasi maksimal 5 riwayat terakhir agar tetap rapi
-        if (riwayatId.length > 5) {
-            riwayatId.pop();
-        }
-        localStorage.setItem('gwk_saved_ids', JSON.stringify(riwayatId));
-    }
-}
         function masukKeMenuUtama() {
             document.getElementById('loginSection').classList.add('hidden');
             document.getElementById('mainSection').classList.remove('hidden');
@@ -357,7 +393,7 @@ function simpanIdKeDatalist(idBaru) {
                         initScanner();
                     } else {
                         gpsDiv.className = "error";
-                        gpsDiv.innerText = "Akses Ditolak: Nah KONANGAN kowe iseh nang KEBON SUWUNG! (Jarak: " + Math.round(jarak) + "m dari kantor).";
+                        gpsDiv.innerText = "Akses Ditolak: Anda berada di luar area kantor! (Jarak: " + Math.round(jarak) + "m dari kantor).";
                     }
                 },
                 (error) => {
@@ -403,7 +439,7 @@ function simpanIdKeDatalist(idBaru) {
             .then(data => {
                 if (data.result === "success") {
                     resultDiv.className = "success";
-                    resultDiv.innerText = "JOSSJISS! Absensi " + tipeAbsensi + " atas nama " + loggedInName + " telah tercatat.";
+                    resultDiv.innerText = "Absensi " + tipeAbsensi + " atas nama " + loggedInName + " telah tercatat.";
                 } else {
                     resultDiv.className = "error";
                     resultDiv.innerText = "Gagal: " + data.message;
