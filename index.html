@@ -437,13 +437,13 @@
             })
             .then(res => res.json())
             .then(data => {
-                if (data.result === "success") {
-                    resultDiv.className = "success";
-                    resultDiv.innerText = "Absensi " + tipeAbsensi + " atas nama " + loggedInName + " telah tercatat.";
-                } else {
-                    resultDiv.className = "error";
-                    resultDiv.innerText = "Gagal: " + data.message;
-                }
+            if (data.result === "success") {
+                resultDiv.className = "success";
+                resultDiv.innerText = "Absensi " + tipeAbsensi + " atas nama " + loggedInName + " telah tercatat.";
+            } else {
+                resultDiv.className = "error";
+                resultDiv.innerText = "Gagal: " + data.message; // Menampilkan pesan "sudah absen" dari server
+            }
                 document.getElementById('btnResetScan').style.display = "block";
                 muatRiwayatPribadi(loggedInId);
             })
