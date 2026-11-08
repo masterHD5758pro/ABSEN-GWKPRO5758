@@ -140,22 +140,22 @@
 <body>
 
     <!-- HALAMAN LOGIN -->
-    <div class="container" id="loginSection">
-        <h2>Login Karyawan GWKPRO5758</h2>
-        <div class="form-group">
-            <label for="loginId">ID Karyawan:</label>
-            <input type="text" id="loginId" placeholder="Contoh: SAMSU234">
-        </div>
-        <div class="form-group">
-            <label for="loginPass">Password:</label>
-            <div class="password-container">
-                <input type="password" id="loginPass" placeholder="Masukkan password">
-                <span class="toggle-password" onclick="togglePasswordVisibility()">🫪</span>
-            </div>
-        </div>
-        <button onclick="prosesLogin()">Masuk / Login</button>
-        <div id="loginError"></div>
+<div class="container" id="loginSection">
+    <h2>Login Karyawan GWKPRO5758</h2>
+    <div class="form-group">
+        <label for="loginId">ID Karyawan:</label>
+        <input type="text" id="loginId" placeholder="Contoh: SAMSU234" autocomplete="username">
     </div>
+    <div class="form-group">
+        <label for="loginPass">Password:</label>
+        <div class="password-container">
+            <input type="password" id="loginPass" placeholder="Masukkan password" autocomplete="current-password">
+            <span class="toggle-password" onclick="togglePasswordVisibility()">🫪</span>
+        </div>
+    </div>
+    <button onclick="prosesLogin()">Masuk / Login</button>
+    <div id="loginError"></div>
+</div>
 
     <!-- HALAMAN UTAMA ABSENSI -->
     <div class="container hidden" id="mainSection">
@@ -165,8 +165,8 @@
         <div class="form-group">
             <label for="tipeAbsensi">Tipe Absensi:</label>
             <select id="tipeAbsensi">
-                <option value="Masuk">Berangkat</option>
-                <option value="Keluar">Pulang</option>
+                <option value="Berangkat">Berangkat</option>
+                <option value="Pulang">Pulang</option>
             </select>
         </div>
 
