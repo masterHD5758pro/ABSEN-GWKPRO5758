@@ -142,11 +142,14 @@
     <!-- HALAMAN LOGIN -->
 <div class="container" id="loginSection">
     <h2>Login Karyawan GWKPRO5758</h2>
-    <div class="form-group">
-        <label for="loginId">ID Karyawan:</label>
-        <input type="text" id="loginId" placeholder="Contoh: SAMSU234" autocomplete="username">
-    </div>
-    <div class="form-group">
+<div class="form-group">
+    <label for="loginId">ID Karyawan:</label>
+    <!-- Tambahkan atribut list="listIdKaryawan" -->
+    <input type="text" id="loginId" placeholder="Contoh: SAMSU234" list="listIdKaryawan" autocomplete="username">
+    <!-- Datalist ini akan diisi secara otomatis oleh JavaScript -->
+    <datalist id="listIdKaryawan"></datalist>
+</div>
+<div class="form-group">
         <label for="loginPass">Password:</label>
         <div class="password-container">
             <input type="password" id="loginPass" placeholder="Masukkan password" autocomplete="current-password">
@@ -276,7 +279,40 @@
                 errorDiv.innerText = "Gagal terhubung ke server.";
             });
         }
+// Fungsi untuk memuat riwayat ID ke datalist di perangkat ini
+function muatDatalistLogin() {
+    let datalist = document.getElementById('listIdKaryawan');
+    if (!datalist) return;
+    
+    // Ambil data riwayat ID dari localStorage (disimpan dalam bentuk array JSON)
+    let riwayatId = JSON.parse(localStorage.getItem('gwk_saved_ids') || '[]');
+    
+    // Bersihkan isi datalist sebelumnya
+    datalist.innerHTML = '';
+    
+    // Masukkan setiap ID yang pernah tersimpan ke dalam option datalist
+    riwayatId.forEach(id => {
+        let option = document.createElement('option');
+        option.value = id;
+        datalist.appendChild(option);
+    });
+}
 
+// Fungsi untuk merekam ID baru yang berhasil login
+function simpanIdKeDatalist(idBaru) {
+    if (!idBaru) return;
+    let riwayatId = JSON.parse(localStorage.getItem('gwk_saved_ids') || '[]');
+    
+    // Jika ID belum ada di dalam riwayat, tambahkan ke urutan paling depan
+    if (!riwayatId.includes(idBaru)) {
+        riwayatId.unshift(idBaru);
+        // Batasi maksimal 5 riwayat terakhir agar tetap rapi
+        if (riwayatId.length > 5) {
+            riwayatId.pop();
+        }
+        localStorage.setItem('gwk_saved_ids', JSON.stringify(riwayatId));
+    }
+}
         function masukKeMenuUtama() {
             document.getElementById('loginSection').classList.add('hidden');
             document.getElementById('mainSection').classList.remove('hidden');
