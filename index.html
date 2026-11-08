@@ -487,7 +487,48 @@
                 historyList.innerHTML = "<p style='color: red; font-size: 14px;'>Gagal memuat riwayat.</p>";
             });
         }
+    // Konfigurasi waktu batas tidak aktif (dalam milidetik)
+const WAKTU_TIMEOUT_MENIT = 5; 
+const TIMEOUT_DURATION = WAKTU_TIMEOUT_MENIT * 60 * 1000; 
 
+let inactivityTimer;
+
+// Fungsi untuk mereset perhitungan waktu setiap kali ada aktivitas user
+function resetInactivityTimer() {
+    // Timer hanya aktif jika user sudah dalam kondisi login (berada di menu utama)
+    let savedId = localStorage.getItem("gwk_logged_id");
+    if (!savedId) return; 
+
+    // Hapus timer lama
+    clearTimeout(inactivityTimer);
+
+    // Pasang timer baru
+    inactivityTimer = setTimeout(() => {
+        alert("Sesi Anda telah berakhir karena tidak ada aktivitas selama " + WAKTU_TIMEOUT_MENIT + " menit. Silakan login kembali.");
+        logout(); // Memanggil fungsi logout otomatis
+    }, TIMEOUT_DURATION);
+}
+
+// Daftarkan event pendeteksi aktivitas di halaman
+window.onload = function() {
+    // Cek sesi login saat halaman pertama kali dimuat
+    let savedId = localStorage.getItem("gwk_logged_id");
+    let savedName = localStorage.getItem("gwk_logged_name");
+    
+    if (savedId) {
+        loggedInId = savedId;
+        loggedInName = savedName;
+        masukKeMenuUtama();
+    }
+};
+
+// Pantau berbagai bentuk aktivitas sentuhan/ketukan layar dari karyawan
+window.addEventListener('mousemove', resetInactivityTimer);
+window.addEventListener('mousedown', resetInactivityTimer);
+window.addEventListener('keypress', resetInactivityTimer);
+window.addEventListener('touchstart', resetInactivityTimer);
+window.addEventListener('scroll', resetInactivityTimer);
+        
         function logout() {
             if (html5QrcodeScanner) {
                 html5QrcodeScanner.clear().catch(e => {});
