@@ -218,15 +218,20 @@
             }
         }
 
-        window.onload = function() {
-            let savedId = localStorage.getItem("gwk_logged_id");
-            let savedName = localStorage.getItem("gwk_logged_name");
-            if (savedId) {
-                loggedInId = savedId;
-                loggedInName = savedName;
-                masukKeMenuUtama();
-            }
-        };
+window.onload = function() {
+    // 1. Muat riwayat ID ke datalist saat halaman dibuka
+    muatDatalistLogin();
+
+    // 2. Cek apakah perangkat sudah pernah login sebelumnya
+    let savedId = localStorage.getItem("gwk_logged_id");
+    let savedName = localStorage.getItem("gwk_logged_name");
+    
+    if (savedId) {
+        loggedInId = savedId;
+        loggedInName = savedName;
+        masukKeMenuUtama();
+    }
+};
 
         function prosesLogin() {
             let id = document.getElementById('loginId').value.trim().toUpperCase();
