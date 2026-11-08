@@ -270,6 +270,9 @@ window.onload = function() {
                     localStorage.setItem("gwk_logged_id", id);
                     localStorage.setItem("gwk_logged_name", data.nama);
                     localStorage.setItem("gwk_device_bound", id);
+                    
+                    // REKAM ID KE DATALIST DI SINI:
+                    simpanIdKeDatalist(id);
 
                     loggedInId = id;
                     loggedInName = data.nama;
