@@ -57,9 +57,10 @@
         });
 
         function generateDynamicQR() {
-            // Membuat token unik berdasarkan jam dan menit berjalan agar berganti otomatis
-            let now = new Date();
-            let tokenUnik = "KANTOR-GWK-" + now.getFullYear() + "-" + (now.getMonth()+1) + "-" + now.getDate() + "-" + now.getHours() + "-" + Math.floor(now.getMinutes() / 1);
+            // Menggunakan interval berbasis milidetik (1 menit / 60000ms) agar presisi
+            let intervalMs = 60000; 
+            let blockTime = Math.floor(new Date().getTime() / intervalMs);
+            let tokenUnik = "GWK-OFFICE-" + blockTime;
             
             qrcode.makeCode(tokenUnik);
             
