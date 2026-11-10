@@ -189,6 +189,31 @@
             font-weight: bold;
             color: #007bff;
         }
+        .radio-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .radio-card {
+            flex: 1;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: bold;
+            color: #555;
+            transition: all 0.2s ease;
+        }
+        .radio-card input[type="radio"] {
+            display: none; /* Sembunyikan titik bawaan radio button */
+        }
+        /* Efek saat opsi dipilih */
+        .radio-card.selected {
+            border-color: #007bff;
+            background-color: #e7f1ff;
+            color: #007bff;
+        }
     </style>
 </head>
 <body>
@@ -233,20 +258,26 @@
         <button class="btn-danger" onclick="logout()">Keluar Akun (Logout)</button>
     </div>
 
-    <!-- MODAL POP-UP PILIH TIPE ABSENSI -->
+ <!-- MODAL POP-UP PILIH TIPE ABSENSI -->
     <div class="modal-overlay" id="modalTipeAbsen">
         <div class="modal-box">
             <h3>Pilih Tipe Kehadiran</h3>
             <p style="font-size: 14px; color: #666; margin-bottom: 15px;">Silakan tentukan status kehadiran Anda sebelum melakukan scan QR.</p>
-            <div class="form-group">
-                <select id="modalTipeSelect">
-                    <option value="Berangkat">Berangkat</option>
-                    <option value="Pulang">Pulang</option>
-                </select>
+            
+<!-- Pilihan Terlihat Langsung (Tanpa Dropdown Tersembunyi) -->
+            <div class="radio-options">
+                <label class="radio-card selected" id="cardBerangkat" onclick="pilihOpsiModal('Berangkat')">
+                    <input type="radio" name="modalTipe" value="Berangkat" checked>
+                    🏃‍♂️ Berangkat
+                </label>
+                <label class="radio-card" id="cardPulang" onclick="pilihOpsiModal('Pulang')">
+                    <input type="radio" name="modalTipe" value="Pulang">
+                    🏠 Pulang
+                </label>
             </div>
+
             <button onclick="konfirmasiTipeAbsen()">OK / Lanjutkan</button>
         </div>
-    </div>
 
     <!-- HALAMAN RIWAYAT PRIBADI -->
     <div class="container hidden" id="historySection">
@@ -459,17 +490,26 @@
             return R * c;
         }
 
-        // Fungsi Membuka Jendela Modal Pilihan Absen
-        function bukaModalPilihAbsen() {
-            if (html5QrcodeScanner) {
-                html5QrcodeScanner.clear().catch(e => {});
+// Fungsi interaktif saat kartu pilihan diklik
+        function pilihOpsiModal(tipe) {
+            selectedModalValue = tipe;
+            let cardBerangkat = document.getElementById('cardBerangkat');
+            let cardPulang = document.getElementById('cardPulang');
+
+            if (tipe === 'Berangkat') {
+                cardBerangkat.classList.add('selected');
+                cardPulang.classList.remove('selected');
+                document.querySelector('input[value="Berangkat"]').checked = true;
+            } else {
+                cardPulang.classList.add('selected');
+                cardBerangkat.classList.remove('selected');
+                document.querySelector('input[value="Pulang"]').checked = true;
             }
-            document.getElementById('modalTipeAbsen').style.display = "flex";
         }
 
         // Fungsi Ketika Karyawan Klik "OK" pada Modal
         function konfirmasiTipeAbsen() {
-            activeTipeAbsensi = document.getElementById('modalTipeSelect').value;
+            activeTipeAbsensi = selectedModalValue;
             
             // Sembunyikan modal
             document.getElementById('modalTipeAbsen').style.display = "none";
@@ -483,8 +523,7 @@
             document.getElementById('btnResetScan').style.display = "none";
 
             initScanner();
-        }
-
+        }    </div>
         function onScanSuccess(decodedText, decodedResult) {
             let resultDiv = document.getElementById('result');
 
