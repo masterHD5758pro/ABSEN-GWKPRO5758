@@ -47,7 +47,6 @@
             font-size: 16px;
             box-sizing: border-box;
         }
-        /* Style untuk pembungkus input password & ikon mata */
         .password-container {
             position: relative;
             width: 100%;
@@ -65,7 +64,6 @@
             font-size: 18px;
             user-select: none;
         }
-        /* Style untuk Dropdown Riwayat ID Custom */
         #customDropdown {
             display: none;
             position: absolute;
@@ -125,6 +123,7 @@
             border-radius: 8px;
             overflow: hidden;
             margin-bottom: 15px;
+            display: none; /* Disembunyikan dulu sebelum modal dipilih */
         }
         #result, #loginError, #gpsStatus {
             padding: 12px;
@@ -161,6 +160,35 @@
         .hidden {
             display: none;
         }
+
+        /* Styling untuk Modal Pop-up Tipe Absensi */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-box {
+            background: white;
+            width: 90%;
+            max-width: 320px;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        .modal-box h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .modal-box select {
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: #007bff;
+        }
     </style>
 </head>
 <body>
@@ -171,7 +199,6 @@
         <div class="form-group">
             <label for="loginId">ID Karyawan:</label>
             <input type="text" id="loginId" placeholder="Contoh: SAMSU234" autocomplete="off" onclick="tampilkanOpsiId()" onfocus="tampilkanOpsiId()">
-            <!-- Kotak Dropdown Riwayat ID -->
             <div id="customDropdown"></div>
         </div>
         <div class="form-group">
@@ -190,23 +217,35 @@
         <h2>Absensi Karyawan</h2>
         <p style="text-align:center; color:#555;">Halo, <b id="namaKaryawanText"></b> (<span id="idKaryawanText"></span>)</p>
         
-        <div class="form-group">
-            <label for="tipeAbsensi">Tipe Absensi:</label>
-            <select id="tipeAbsensi">
-                <option value="Berangkat">Berangkat</option>
-                <option value="Pulang">Pulang</option>
-            </select>
-        </div>
-
         <div id="gpsStatus" class="info">Mengecek posisi GPS Anda...</div>
 
-        <label>Scan QR Code Kantor:</label>
+        <!-- Info Status Tipe Absen yang Dipilih -->
+        <div id="selectedAbsenInfo" style="display:none; text-align:center; margin-bottom:15px; font-weight:bold; color:#007bff; background:#e2f0d9; padding:8px; border-radius:6px;">
+            Mode Absen: <span id="textTipeTerpilih">-</span>
+        </div>
+
+        <label id="labelScanner" style="display:none;">Scan QR Code Kantor:</label>
         <div id="reader"></div>
 
         <div id="result"></div>
         
-        <button id="btnResetScan" class="btn-success" onclick="mulaiScanUlang()">Scan Ulang / Absen Kembali</button>
+        <button id="btnResetScan" class="btn-success" onclick="bukaModalPilihAbsen()">Pilih Ulang Absen / Scan Kembali</button>
         <button class="btn-danger" onclick="logout()">Keluar Akun (Logout)</button>
+    </div>
+
+    <!-- MODAL POP-UP PILIH TIPE ABSENSI -->
+    <div class="modal-overlay" id="modalTipeAbsen">
+        <div class="modal-box">
+            <h3>Pilih Tipe Kehadiran</h3>
+            <p style="font-size: 14px; color: #666; margin-bottom: 15px;">Silakan tentukan status kehadiran Anda sebelum melakukan scan QR.</p>
+            <div class="form-group">
+                <select id="modalTipeSelect">
+                    <option value="Berangkat">Berangkat</option>
+                    <option value="Pulang">Pulang</option>
+                </select>
+            </div>
+            <button onclick="konfirmasiTipeAbsen()">OK / Lanjutkan</button>
+        </div>
     </div>
 
     <!-- HALAMAN RIWAYAT PRIBADI -->
@@ -216,10 +255,8 @@
     </div>
 
     <script>
-        // GANTI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxQxEJAJTr45CiuuDbt-8lAhyBRLLbDMWz9e12IotFAOovDz38lHCiItMbzuwr-TBIO/exec";
 
-        // TITIK KORDINAT KANTOR & RADIUS MAKSIMAL (dalam meter)
         const KANTOR_LAT = -6.9110009;
         const KANTOR_LNG = 109.6625923;
         const RADIUS_MAKSIMAL_METER = 50; 
@@ -229,8 +266,29 @@
         let loggedInName = "";
         let userLat = null;
         let userLng = null;
+        let activeTipeAbsensi = "Berangkat";
 
-        // Fungsi untuk menampilkan / menyembunyikan password
+        // Auto Logout Inactivity Timer (5 Menit)
+        const WAKTU_TIMEOUT_MENIT = 5; 
+        const TIMEOUT_DURATION = WAKTU_TIMEOUT_MENIT * 60 * 1000; 
+        let inactivityTimer;
+
+        function resetInactivityTimer() {
+            let savedId = localStorage.getItem("gwk_logged_id");
+            if (!savedId) return; 
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(() => {
+                alert("Sesi Anda telah berakhir karena tidak ada aktivitas selama " + WAKTU_TIMEOUT_MENIT + " menit. Silakan login kembali.");
+                logout();
+            }, TIMEOUT_DURATION);
+        }
+
+        window.addEventListener('mousemove', resetInactivityTimer);
+        window.addEventListener('mousedown', resetInactivityTimer);
+        window.addEventListener('keypress', resetInactivityTimer);
+        window.addEventListener('touchstart', resetInactivityTimer);
+        window.addEventListener('scroll', resetInactivityTimer);
+
         function togglePasswordVisibility() {
             let passInput = document.getElementById('loginPass');
             let toggleIcon = document.querySelector('.toggle-password');
@@ -243,11 +301,9 @@
             }
         }
 
-        // Cek sesi login saat halaman pertama kali dimuat
         window.onload = function() {
             let savedId = localStorage.getItem("gwk_logged_id");
             let savedName = localStorage.getItem("gwk_logged_name");
-            
             if (savedId) {
                 loggedInId = savedId;
                 loggedInName = savedName;
@@ -255,21 +311,17 @@
             }
         };
 
-        // Fungsi untuk memunculkan riwayat ID saat kolom diklik
         function tampilkanOpsiId() {
             let dropdown = document.getElementById('customDropdown');
             let riwayatId = JSON.parse(localStorage.getItem('gwk_saved_ids') || '[]');
-            
             if (riwayatId.length === 0) {
                 dropdown.style.display = "none";
                 return;
             }
-            
             let html = "";
             riwayatId.forEach(id => {
                 html += `<div class="dropdown-item" onclick="pilihIdDihalaman('${id}')">👤 ${id}</div>`;
             });
-            
             dropdown.innerHTML = html;
             dropdown.style.display = "block";
         }
@@ -279,7 +331,6 @@
             document.getElementById('customDropdown').style.display = "none";
         }
 
-        // Sembunyikan dropdown jika mengklik di luar area input
         document.addEventListener('click', function(event) {
             let inputId = document.getElementById('loginId');
             let dropdown = document.getElementById('customDropdown');
@@ -288,16 +339,12 @@
             }
         });
 
-        // Fungsi untuk merekam ID baru ke localStorage perangkat
         function simpanIdKeRiwayat(idBaru) {
             if (!idBaru) return;
             let riwayatId = JSON.parse(localStorage.getItem('gwk_saved_ids') || '[]');
-            
             if (!riwayatId.includes(idBaru)) {
                 riwayatId.unshift(idBaru);
-                if (riwayatId.length > 5) {
-                    riwayatId.pop();
-                }
+                if (riwayatId.length > 5) riwayatId.pop();
                 localStorage.setItem('gwk_saved_ids', JSON.stringify(riwayatId));
             }
         }
@@ -321,11 +368,7 @@
             fetch(WEB_APP_URL, {
                 method: "POST",
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
-                body: JSON.stringify({
-                    action: "login",
-                    idKaryawan: id,
-                    password: pass
-                })
+                body: JSON.stringify({ action: "login", idKaryawan: id, password: pass })
             })
             .then(res => res.json())
             .then(data => {
@@ -339,8 +382,6 @@
                     localStorage.setItem("gwk_logged_id", id);
                     localStorage.setItem("gwk_logged_name", data.nama);
                     localStorage.setItem("gwk_device_bound", id);
-                    
-                    // Simpan ke riwayat ID perangkat
                     simpanIdKeRiwayat(id);
 
                     loggedInId = id;
@@ -367,6 +408,7 @@
 
             cekLokasiGPS();
             muatRiwayatPribadi(loggedInId);
+            resetInactivityTimer();
         }
 
         function cekLokasiGPS() {
@@ -389,11 +431,13 @@
                     
                     if (jarak <= RADIUS_MAKSIMAL_METER) {
                         gpsDiv.className = "success";
-                        gpsDiv.innerText = "GPS Valid: Anda berada di area kantor (Jarak: " + Math.round(jarak) + "m). Silakan scan QR.";
-                        initScanner();
+                        gpsDiv.innerText = "GPS Valid: Berada di area kantor (Jarak: " + Math.round(jarak) + "m).";
+                        
+                        // JIKA GPS VALID, MUNCULKAN JENDELA MODAL PILIH TIPE ABSEN
+                        bukaModalPilihAbsen();
                     } else {
                         gpsDiv.className = "error";
-                        gpsDiv.innerText = "Akses Ditolak: Anda berada di luar area kantor! (Jarak: " + Math.round(jarak) + "m dari kantor).";
+                        gpsDiv.innerText = "Akses Ditolak: Anda di luar area kantor! (Jarak: " + Math.round(jarak) + "m).";
                     }
                 },
                 (error) => {
@@ -415,8 +459,33 @@
             return R * c;
         }
 
+        // Fungsi Membuka Jendela Modal Pilihan Absen
+        function bukaModalPilihAbsen() {
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.clear().catch(e => {});
+            }
+            document.getElementById('modalTipeAbsen').style.display = "flex";
+        }
+
+        // Fungsi Ketika Karyawan Klik "OK" pada Modal
+        function konfirmasiTipeAbsen() {
+            activeTipeAbsensi = document.getElementById('modalTipeSelect').value;
+            
+            // Sembunyikan modal
+            document.getElementById('modalTipeAbsen').style.display = "none";
+
+            // Tampilkan info pilihan & aktifkan scanner kamera
+            document.getElementById('selectedAbsenInfo').style.display = "block";
+            document.getElementById('textTipeTerpilih').innerText = activeTipeAbsensi;
+            document.getElementById('labelScanner').style.display = "block";
+            document.getElementById('reader').style.display = "block";
+            document.getElementById('result').style.display = "none";
+            document.getElementById('btnResetScan').style.display = "none";
+
+            initScanner();
+        }
+
         function onScanSuccess(decodedText, decodedResult) {
-            let tipeAbsensi = document.getElementById('tipeAbsensi').value;
             let resultDiv = document.getElementById('result');
 
             html5QrcodeScanner.clear().catch(err => console.error(err));
@@ -432,18 +501,18 @@
                     action: "absen",
                     idKaryawan: loggedInId,
                     tokenKantor: decodedText,
-                    tipeAbsensi: tipeAbsensi
+                    tipeAbsensi: activeTipeAbsensi
                 })
             })
             .then(res => res.json())
             .then(data => {
-            if (data.result === "success") {
-                resultDiv.className = "success";
-                resultDiv.innerText = "Absensi " + tipeAbsensi + " atas nama " + loggedInName + " telah tercatat.";
-            } else {
-                resultDiv.className = "error";
-                resultDiv.innerText = "Gagal: " + data.message; // Menampilkan pesan "sudah absen" dari server
-            }
+                if (data.result === "success") {
+                    resultDiv.className = "success";
+                    resultDiv.innerText = "Absensi " + activeTipeAbsensi + " atas nama " + loggedInName + " telah tercatat.";
+                } else {
+                    resultDiv.className = "error";
+                    resultDiv.innerText = "Gagal: " + data.message;
+                }
                 document.getElementById('btnResetScan').style.display = "block";
                 muatRiwayatPribadi(loggedInId);
             })
@@ -457,12 +526,6 @@
             html5QrcodeScanner = new Html5QrcodeScanner(
                 "reader", { fps: 10, qrbox: 250 }, false);
             html5QrcodeScanner.render(onScanSuccess);
-        }
-
-        function mulaiScanUlang() {
-            document.getElementById('result').style.display = "none";
-            document.getElementById('btnResetScan').style.display = "none";
-            cekLokasiGPS();
         }
 
         function muatRiwayatPribadi(id) {
@@ -487,48 +550,7 @@
                 historyList.innerHTML = "<p style='color: red; font-size: 14px;'>Gagal memuat riwayat.</p>";
             });
         }
-    // Konfigurasi waktu batas tidak aktif (dalam milidetik)
-const WAKTU_TIMEOUT_MENIT = 10; 
-const TIMEOUT_DURATION = WAKTU_TIMEOUT_MENIT * 60 * 1000; 
 
-let inactivityTimer;
-
-// Fungsi untuk mereset perhitungan waktu setiap kali ada aktivitas user
-function resetInactivityTimer() {
-    // Timer hanya aktif jika user sudah dalam kondisi login (berada di menu utama)
-    let savedId = localStorage.getItem("gwk_logged_id");
-    if (!savedId) return; 
-
-    // Hapus timer lama
-    clearTimeout(inactivityTimer);
-
-    // Pasang timer baru
-    inactivityTimer = setTimeout(() => {
-        alert("Sesi Anda telah berakhir karena tidak ada aktivitas selama " + WAKTU_TIMEOUT_MENIT + " menit. Silakan login kembali.");
-        logout(); // Memanggil fungsi logout otomatis
-    }, TIMEOUT_DURATION);
-}
-
-// Daftarkan event pendeteksi aktivitas di halaman
-window.onload = function() {
-    // Cek sesi login saat halaman pertama kali dimuat
-    let savedId = localStorage.getItem("gwk_logged_id");
-    let savedName = localStorage.getItem("gwk_logged_name");
-    
-    if (savedId) {
-        loggedInId = savedId;
-        loggedInName = savedName;
-        masukKeMenuUtama();
-    }
-};
-
-// Pantau berbagai bentuk aktivitas sentuhan/ketukan layar dari karyawan
-window.addEventListener('mousemove', resetInactivityTimer);
-window.addEventListener('mousedown', resetInactivityTimer);
-window.addEventListener('keypress', resetInactivityTimer);
-window.addEventListener('touchstart', resetInactivityTimer);
-window.addEventListener('scroll', resetInactivityTimer);
-        
         function logout() {
             if (html5QrcodeScanner) {
                 html5QrcodeScanner.clear().catch(e => {});
@@ -544,6 +566,5 @@ window.addEventListener('scroll', resetInactivityTimer);
             document.getElementById('loginError').style.display = "none";
         }
     </script>
-
 </body>
 </html>
