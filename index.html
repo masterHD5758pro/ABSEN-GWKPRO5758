@@ -123,7 +123,7 @@
             border-radius: 8px;
             overflow: hidden;
             margin-bottom: 15px;
-            display: none; /* Disembunyikan dulu sebelum modal dipilih */
+            display: none;
         }
         #result, #loginError, #gpsStatus {
             padding: 12px;
@@ -184,11 +184,6 @@
             margin-top: 0;
             color: #333;
         }
-        .modal-box select {
-            margin-bottom: 15px;
-            font-weight: bold;
-            color: #007bff;
-        }
         .radio-options {
             display: flex;
             gap: 10px;
@@ -206,9 +201,8 @@
             transition: all 0.2s ease;
         }
         .radio-card input[type="radio"] {
-            display: none; /* Sembunyikan titik bawaan radio button */
+            display: none;
         }
-        /* Efek saat opsi dipilih */
         .radio-card.selected {
             border-color: #007bff;
             background-color: #e7f1ff;
@@ -258,13 +252,12 @@
         <button class="btn-danger" onclick="logout()">Keluar Akun (Logout)</button>
     </div>
 
- <!-- MODAL POP-UP PILIH TIPE ABSENSI -->
+    <!-- MODAL POP-UP PILIH TIPE ABSENSI -->
     <div class="modal-overlay" id="modalTipeAbsen">
         <div class="modal-box">
             <h3>Pilih Tipe Kehadiran</h3>
             <p style="font-size: 14px; color: #666; margin-bottom: 15px;">Silakan tentukan status kehadiran Anda sebelum melakukan scan QR.</p>
             
-<!-- Pilihan Terlihat Langsung (Tanpa Dropdown Tersembunyi) -->
             <div class="radio-options">
                 <label class="radio-card selected" id="cardBerangkat" onclick="pilihOpsiModal('Berangkat')">
                     <input type="radio" name="modalTipe" value="Berangkat" checked>
@@ -278,6 +271,7 @@
 
             <button onclick="konfirmasiTipeAbsen()">OK / Lanjutkan</button>
         </div>
+    </div>
 
     <!-- HALAMAN RIWAYAT PRIBADI -->
     <div class="container hidden" id="historySection">
@@ -298,6 +292,7 @@
         let userLat = null;
         let userLng = null;
         let activeTipeAbsensi = "Berangkat";
+        let selectedModalValue = "Berangkat";
 
         // Auto Logout Inactivity Timer (5 Menit)
         const WAKTU_TIMEOUT_MENIT = 5; 
@@ -464,7 +459,6 @@
                         gpsDiv.className = "success";
                         gpsDiv.innerText = "GPS Valid: Berada di area kantor (Jarak: " + Math.round(jarak) + "m).";
                         
-                        // JIKA GPS VALID, MUNCULKAN JENDELA MODAL PILIH TIPE ABSEN
                         bukaModalPilihAbsen();
                     } else {
                         gpsDiv.className = "error";
@@ -490,7 +484,6 @@
             return R * c;
         }
 
-// Fungsi interaktif saat kartu pilihan diklik
         function pilihOpsiModal(tipe) {
             selectedModalValue = tipe;
             let cardBerangkat = document.getElementById('cardBerangkat');
@@ -507,14 +500,18 @@
             }
         }
 
-        // Fungsi Ketika Karyawan Klik "OK" pada Modal
+        function bukaModalPilihAbsen() {
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.clear().catch(e => {});
+            }
+            document.getElementById('modalTipeAbsen').style.display = "flex";
+        }
+
         function konfirmasiTipeAbsen() {
             activeTipeAbsensi = selectedModalValue;
             
-            // Sembunyikan modal
             document.getElementById('modalTipeAbsen').style.display = "none";
 
-            // Tampilkan info pilihan & aktifkan scanner kamera
             document.getElementById('selectedAbsenInfo').style.display = "block";
             document.getElementById('textTipeTerpilih').innerText = activeTipeAbsensi;
             document.getElementById('labelScanner').style.display = "block";
@@ -523,7 +520,8 @@
             document.getElementById('btnResetScan').style.display = "none";
 
             initScanner();
-        }    </div>
+        }
+
         function onScanSuccess(decodedText, decodedResult) {
             let resultDiv = document.getElementById('result');
 
