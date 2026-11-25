@@ -611,11 +611,22 @@
             });
         }
 
-        function initScanner() {
-            html5QrcodeScanner = new Html5QrcodeScanner(
-                "reader", { fps: 10, qrbox: 250 }, false);
-            html5QrcodeScanner.render(onScanSuccess);
-        }
+function initScanner() {
+  const readerEl = document.getElementById("reader");
+  if (!readerEl) return;
+
+  if (html5QrcodeScanner) {
+    html5QrcodeScanner.clear().catch(() => {});
+  }
+  readerEl.innerHTML = "";
+
+  html5QrcodeScanner = new Html5QrcodeScanner(
+    "reader",
+    { fps: 10, qrbox: 250 },
+    false
+  );
+  html5QrcodeScanner.render(onScanSuccess);
+}
 
         function escapeHtml(text) {
             return String(text || "")
