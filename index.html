@@ -23,6 +23,7 @@
             border-radius: 12px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
             margin-bottom: 20px;
+            box-sizing: border-box;
         }
         h2, h3 {
             text-align: center;
@@ -150,12 +151,63 @@
             font-size: 13px;
         }
         .history-item {
-            background: #e9ecef;
-            padding: 8px;
-            margin-top: 6px;
-            border-radius: 4px;
+            background: #f1f3f5;
+            border: 1px solid #e2e6ea;
+            padding: 10px;
+            margin-top: 8px;
+            border-radius: 8px;
             font-size: 13px;
             text-align: left;
+        }
+        .history-item.is-cancelled {
+            background: #f8f9fa;
+            opacity: 0.7;
+        }
+        .history-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 4px;
+        }
+        .history-tipe {
+            font-weight: bold;
+            font-size: 14px;
+            color: #212529;
+        }
+        .history-item.is-cancelled .history-tipe {
+            text-decoration: line-through;
+            color: #6c757d;
+        }
+        .badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 999px;
+        }
+        .badge-manual {
+            background-color: #dbeafe;
+            color: #1d4ed8;
+        }
+        .badge-qr {
+            background-color: #dcfce7;
+            color: #15803d;
+        }
+        .badge-cancelled {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+        .history-meta {
+            color: #495057;
+            font-size: 12.5px;
+        }
+        .history-note {
+            margin-top: 4px;
+            color: #6c757d;
+            font-size: 12px;
+            font-style: italic;
         }
         .hidden {
             display: none;
@@ -565,6 +617,14 @@
             html5QrcodeScanner.render(onScanSuccess);
         }
 
+        function escapeHtml(text) {
+            return String(text || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
         function muatRiwayatPribadi(id) {
             let historyList = document.getElementById('historyList');
             historyList.innerHTML = "Memuat riwayat...";
@@ -572,14 +632,45 @@
             fetch(WEB_APP_URL + "?id=" + encodeURIComponent(id))
             .then(res => res.json())
             .then(data => {
-                if (data.length === 0) {
+                if (!Array.isArray(data) || data.length === 0) {
                     historyList.innerHTML = "<p style='color: #666; font-size: 14px; text-align: center;'>Belum ada riwayat absen.</p>";
                     return;
                 }
 
                 let html = "<b style='font-size: 14px; color: #333;'>Riwayat Terbaru:</b>";
                 data.reverse().slice(0, 5).forEach(item => {
-                    html += `<div class="history-item">📅 ${item.timestamp} <br>📌 <b>${item.tipeAbsensi}</b> - ${item.namaKaryawan} (${item.idKaryawan})</div>`;
+                    const tipe = escapeHtml(item.tipeAbsensi || "-");
+                    const nama = escapeHtml(item.namaKaryawan || "");
+                    const idKar = escapeHtml(item.idKaryawan || id);
+                    const metode = String(item.metode || "QR_TOKEN").toUpperCase();
+                    const status = String(item.status || "VALID").toUpperCase();
+                    const keterangan = escapeHtml(item.keterangan || "");
+
+                    const isCancelled = status === "DIBATALKAN_SALAH_TIPE";
+                    const isManual = metode === "MANUAL_ADMIN";
+
+                    let badgeHtml = `<span class="badge badge-qr">QR Scan</span>`;
+                    if (isCancelled) {
+                        badgeHtml = `<span class="badge badge-cancelled">Dibatalkan (Salah Tipe)</span>`;
+                    } else if (isManual) {
+                        badgeHtml = `<span class="badge badge-manual">Input Manual</span>`;
+                    }
+
+                    const waktuTampil = item.tanggal
+                        ? `${escapeHtml(item.tanggal)}${item.jam ? ` • ${escapeHtml(item.jam)}` : ""}`
+                        : escapeHtml(item.timestamp || "");
+
+                    html += `
+                        <div class="history-item ${isCancelled ? "is-cancelled" : ""}">
+                            <div class="history-header">
+                                <span class="history-tipe">📌 ${tipe}</span>
+                                ${badgeHtml}
+                            </div>
+                            <div class="history-meta">📅 ${waktuTampil}</div>
+                            <div class="history-meta">👤 ${nama} (${idKar})</div>
+                            ${keterangan ? `<div class="history-note">Catatan: ${keterangan}</div>` : ""}
+                        </div>
+                    `;
                 });
                 historyList.innerHTML = html;
             })
