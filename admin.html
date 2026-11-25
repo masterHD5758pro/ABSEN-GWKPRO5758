@@ -191,11 +191,7 @@
       <div class="form-group">
         <label for="employeeSelect">Pilih Karyawan</label>
         <select id="employeeSelect">
-          <option value="">-- Pilih cepat atau ketik ID --</option>
-          <option value="MKHBB001">MKHBB001 - M KHUBAIB TAMAMI</option>
-          <option value="ALFNR002">ALFNR002 - ALFIAN NOR</option>
-          <option value="ARFST003">ARFST003 - ARIF SETYAWAN</option>
-          <option value="AFLHD004">AFLHD004 - AFLAHUL HADI</option>
+          <option value="">-- Memuat daftar karyawan... --</option>
         </select>
       </div>
 
@@ -370,6 +366,34 @@
     });
 
     setDefaultDate();
+    async function muatDaftarKaryawan() {
+      if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes("AKfycbx...")) {
+        employeeSelectEl.innerHTML = '<option value="">-- Pilih cepat atau ketik ID --</option>';
+        return;
+      }
+
+      try {
+        const res = await fetch(`${APPS_SCRIPT_URL}?action=list_karyawan`);
+        const json = await res.json();
+
+        employeeSelectEl.innerHTML = '<option value="">-- Pilih cepat atau ketik ID --</option>';
+
+        if (json && json.result === "success" && Array.isArray(json.data)) {
+          json.data.forEach((emp) => {
+            const opt = document.createElement("option");
+            opt.value = emp.idKaryawan;
+            opt.textContent = `${emp.idKaryawan} - ${emp.namaKaryawan}`;
+            employeeSelectEl.appendChild(opt);
+          });
+        }
+      } catch (err) {
+        employeeSelectEl.innerHTML = '<option value="">-- Gagal memuat, ketik ID manual --</option>';
+        console.warn("Gagal memuat daftar karyawan otomatis:", err);
+      }
+    }
+
+    setDefaultDate();
+    muatDaftarKaryawan();
   </script>
 </body>
 </html>
