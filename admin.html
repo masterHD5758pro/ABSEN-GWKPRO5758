@@ -1,84 +1,375 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel QR Code Absensi Kantor</title>
-    <!-- Library QR Code Generator -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #1e1e2f;
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .card {
-            background: white;
-            color: #333;
-            padding: 30px;
-            border-radius: 15px;
-            text-align: center;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-        }
-        #qrcode {
-            margin: 20px 0;
-            display: flex;
-            justify-content: center;
-        }
-        .timer {
-            font-size: 14px;
-            color: #666;
-            margin-top: 10px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Input Absen Manual - Admin GWK-OFFICE</title>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success-bg: #ecfdf5;
+      --success-text: #065f46;
+      --success-border: #a7f3d0;
+      --error-bg: #fef2f2;
+      --error-text: #991b1b;
+      --error-border: #fecaca;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px 16px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .manual-absen-wrapper {
+      max-width: 540px;
+      margin: 0 auto;
+      background: var(--card);
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 22px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+    }
+
+    .manual-absen-header {
+      margin-bottom: 18px;
+      border-bottom: 1px solid #f0f2f5;
+      padding-bottom: 12px;
+    }
+
+    .manual-absen-header h2 {
+      margin: 0 0 4px;
+      font-size: 1.2rem;
+    }
+
+    .manual-absen-header p {
+      margin: 0;
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 0.92rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+    }
+
+    textarea {
+      min-height: 76px;
+      resize: vertical;
+    }
+
+    .hint-text {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .btn-submit {
+      width: 100%;
+      margin-top: 6px;
+      padding: 11px 16px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #fff;
+      background: var(--primary);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .status-box {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      display: none;
+      border: 1px solid transparent;
+    }
+
+    .status-box.show {
+      display: block;
+    }
+
+    .status-box.success {
+      background: var(--success-bg);
+      color: var(--success-text);
+      border-color: var(--success-border);
+    }
+
+    .status-box.error {
+      background: var(--error-bg);
+      color: var(--error-text);
+      border-color: var(--error-border);
+    }
+
+    @media (max-width: 520px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
-
-    <div class="card">
-        <h1>GWKPRO5758</h1>
-        <h2>QR Code Absen Kerja</h2>
-        <p>Silakan scan menggunakan HPmu dewe, jangan pinjam HP tetangga</p>
-        
-        <div id="qrcode"></div>
-        
-        <div class="timer" id="timerText">Memperbarui QR Code dalam 60 detik...</div>
+  <section class="manual-absen-wrapper" aria-labelledby="manualAbsenTitle">
+    <div class="manual-absen-header">
+      <h2 id="manualAbsenTitle">Koreksi / Input Absen Manual</h2>
+      <p>Gunakan form ini jika karyawan salah memilih tipe absen (Berangkat / Pulang) pada tanggal tertentu.</p>
     </div>
 
-    <script>
-        let qrcodeContainer = document.getElementById("qrcode");
-        let qrcode = new QRCode(qrcodeContainer, {
-            width: 250,
-            height: 250
+    <form id="adminManualAbsenForm" class="form-grid" novalidate>
+      <div class="form-group">
+        <label for="adminPin">PIN Admin</label>
+        <input
+          type="password"
+          id="adminPin"
+          name="adminPin"
+          placeholder="Masukkan PIN admin"
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="employeeSelect">Pilih Karyawan</label>
+        <select id="employeeSelect">
+          <option value="">-- Pilih cepat atau ketik ID --</option>
+          <option value="MKHBB001">MKHBB001 - M KHUBAIB TAMAMI</option>
+          <option value="ALFNR002">ALFNR002 - ALFIAN NOR</option>
+          <option value="ARFST003">ARFST003 - ARIF SETYAWAN</option>
+          <option value="AFLHD004">AFLHD004 - AFLAHUL HADI</option>
+        </select>
+      </div>
+
+      <div class="form-group full-width">
+        <label for="employeeId">ID Karyawan</label>
+        <input
+          type="text"
+          id="employeeId"
+          name="employeeId"
+          placeholder="Contoh: MKHBB001"
+          style="text-transform: uppercase;"
+          required
+        />
+        <span class="hint-text">Otomatis terisi saat memilih dari dropdown, atau ketik manual sesuai ID di database.</span>
+      </div>
+
+      <div class="form-group">
+        <label for="manualDate">Tanggal Absen</label>
+        <input type="date" id="manualDate" name="date" required />
+      </div>
+
+      <div class="form-group">
+        <label for="manualTime">Jam Absen</label>
+        <input type="time" id="manualTime" name="time" step="1" value="08:00:00" required />
+      </div>
+
+      <div class="form-group">
+        <label for="manualType">Tipe Absen yang Benar</label>
+        <select id="manualType" name="type" required>
+          <option value="Berangkat">Berangkat</option>
+          <option value="Pulang">Pulang</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="correctionMode">Mode Penanganan</label>
+        <select id="correctionMode" name="mode">
+          <option value="replace_wrong_type">Batalkan tipe lawan &amp; simpan baru</option>
+          <option value="insert_bypass">Tambah baris baru saja (bypass)</option>
+        </select>
+      </div>
+
+      <div class="form-group full-width">
+        <label for="manualNote">Keterangan / Alasan Koreksi</label>
+        <textarea
+          id="manualNote"
+          name="note"
+          placeholder="Contoh: Salah pencet Pulang saat datang pagi, dikoreksi oleh admin"
+        ></textarea>
+      </div>
+
+      <div class="form-group full-width">
+        <button type="submit" id="btnSubmitManual" class="btn-submit">
+          Simpan Input Manual
+        </button>
+      </div>
+    </form>
+
+    <div id="manualAbsenStatus" class="status-box" role="alert" aria-live="polite"></div>
+  </section>
+
+  <script>
+    // Ganti dengan URL Web App Google Apps Script kamu yang sudah di-deploy
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxQxEJAJTr45CiuuDbt-8lAhyBRLLbDMWz9e12IotFAOovDz38lHCiItMbzuwr-TBIO/exec";
+
+    const formEl = document.getElementById("adminManualAbsenForm");
+    const pinEl = document.getElementById("adminPin");
+    const employeeSelectEl = document.getElementById("employeeSelect");
+    const employeeIdEl = document.getElementById("employeeId");
+    const dateEl = document.getElementById("manualDate");
+    const timeEl = document.getElementById("manualTime");
+    const typeEl = document.getElementById("manualType");
+    const modeEl = document.getElementById("correctionMode");
+    const noteEl = document.getElementById("manualNote");
+    const submitBtnEl = document.getElementById("btnSubmitManual");
+    const statusBoxEl = document.getElementById("manualAbsenStatus");
+
+    // Set default tanggal ke hari ini (format YYYY-MM-DD lokal)
+    function setDefaultDate() {
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const dd = String(now.getDate()).padStart(2, "0");
+      dateEl.value = `${yyyy}-${mm}-${dd}`;
+    }
+
+    function showStatus(type, message) {
+      statusBoxEl.className = `status-box show ${type}`;
+      statusBoxEl.textContent = message;
+    }
+
+    employeeSelectEl.addEventListener("change", function () {
+      if (this.value) {
+        employeeIdEl.value = this.value.trim().toUpperCase();
+      }
+    });
+
+    employeeIdEl.addEventListener("input", function () {
+      const val = this.value.trim().toUpperCase();
+      const matchedOption = Array.from(employeeSelectEl.options).find(
+        (opt) => opt.value.toUpperCase() === val
+      );
+      employeeSelectEl.value = matchedOption ? matchedOption.value : "";
+    });
+
+    formEl.addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const adminPin = pinEl.value.trim();
+      const employeeId = employeeIdEl.value.trim().toUpperCase();
+      const date = dateEl.value;
+      const time = timeEl.value || "08:00:00";
+      const type = typeEl.value;
+      const mode = modeEl.value;
+      const note = noteEl.value.trim() || "Input manual oleh admin";
+
+      if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes("AKfycbx...")) {
+        showStatus("error", "URL Google Apps Script belum diisi pada variabel APPS_SCRIPT_URL.");
+        return;
+      }
+
+      if (!adminPin || !employeeId || !date || !type) {
+        showStatus("error", "Mohon lengkapi PIN Admin, ID Karyawan, Tanggal, dan Tipe Absen.");
+        return;
+      }
+
+      const payload = {
+        action: "admin_manual_absen",
+        adminPin: adminPin,
+        employeeId: employeeId,
+        date: date,
+        time: time,
+        type: type,
+        mode: mode,
+        note: note
+      };
+
+      submitBtnEl.disabled = true;
+      submitBtnEl.textContent = "Menyimpan...";
+      statusBoxEl.className = "status-box";
+      statusBoxEl.textContent = "";
+
+      try {
+        // Menggunakan text/plain agar menghindari preflight OPTIONS CORS pada Google Apps Script
+        const response = await fetch(APPS_SCRIPT_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+          },
+          body: JSON.stringify(payload)
         });
 
-        function generateDynamicQR() {
-            // Menggunakan interval berbasis milidetik (1 menit / 60000ms) agar presisi
-            let intervalMs = 60000; 
-            let blockTime = Math.floor(new Date().getTime() / intervalMs);
-            let tokenUnik = "GWK-OFFICE-" + blockTime;
-            
-            qrcode.makeCode(tokenUnik);
-            
-            let detik = 60;
-            let timerInterval = setInterval(() => {
-                detik--;
-                document.getElementById("timerText").innerText = "QR Code akan diperbarui dalam " + detik + " detik...";
-                if (detik <= 0) {
-                    clearInterval(timerInterval);
-                    generateDynamicQR(); // Refresh QR otomatis
-                }
-            }, 1000);
+        const result = await response.json();
+
+        if (result && result.result === "success") {
+          showStatus("success", result.message || "Input manual berhasil disimpan.");
+          noteEl.value = "";
+        } else {
+          showStatus("error", (result && result.message) || "Gagal menyimpan input manual.");
         }
+      } catch (err) {
+        showStatus(
+          "error",
+          "Gagal membaca respons server: " +
+            err.message +
+            ". Pastikan Web App Apps Script di-deploy dengan akses 'Anyone' (Siapa saja)."
+        );
+      } finally {
+        submitBtnEl.disabled = false;
+        submitBtnEl.textContent = "Simpan Input Manual";
+      }
+    });
 
-        // Jalankan saat pertama buka
-        generateDynamicQR();
-    </script>
-
+    setDefaultDate();
+  </script>
 </body>
 </html>
